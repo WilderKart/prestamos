@@ -1,0 +1,101 @@
+@import "./globals.css";
+
+:root {
+  /* Light mode base colors */
+  --bg-base: #F3F4F6;               /* gris extra claro */
+  --card-bg: rgba(255,255,255,0.6);   /* glassmorphism */
+  --card-shadow: 0 4px 30px rgba(0,0,0,0.1);
+  --color-primary: #000000;          /* negro */
+  --color-secondary: #F5C518;        /* amarillo dorado */
+  --color-success: #22c55e;          /* verde */
+  --color-warning: #f59e0b; /* amarillo alerta */
+  --color-danger: #ef4444; /* rojo alerta */
+  --color-accent-soft: #F5C51820;    /* suave */
+  --text-primary: #111114;          /* texto oscuro */
+  --text-secondary: #555555;
+  --text-muted: #777777;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+}
+
+/* Utility classes mapping old names to new palette */
+.bg-primary { background-color: var(--color-primary); }
+.text-primary { color: var(--color-primary); }
+.bg-secondary { background-color: var(--color-secondary); }
+.text-secondary { color: var(--color-secondary); }
+.bg-success { background-color: var(--color-success); }
+.text-success { color: var(--color-success); }
+.bg-warning { background-color: var(--color-warning); }
+.text-warning { color: var(--color-warning); }
+.border-warning { border-color: var(--color-warning); }
+.bg-danger { background-color: var(--color-danger); }
+.text-danger { color: var(--color-danger); }
+.border-danger { border-color: var(--color-danger); }
+.text-info { color: var(--color-info); }
+
+/* Estilos de Diseño Chation Premium */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  border-radius: 20px;
+}
+
+.shadow-premium {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(245, 197, 24, 0.15);
+}
+
+/* Header Chation: Negro Sólido Curvo */
+.header-chation {
+  background-color: #000000;
+  color: #FFFFFF;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Bottom Nav Chation: Píldora Flotante con Iconos */
+.bottom-pill-nav {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #000000;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+.nav-link {
+  color: #9CA3AF;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nav-link.active {
+  color: #F5C518;
+}
+
+.nav-active-dot {
+  width: 4px;
+  height: 4px;
+  background-color: #F5C518;
+  border-radius: 9999px;
+  margin-top: 4px;
+}
+

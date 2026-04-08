@@ -1,0 +1,32 @@
+
+> mivank@0.1.0 build
+> next build
+
+▲ Next.js 16.2.2 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 3.8s
+  Running TypeScript ...
+Failed to type check.
+
+./src/app/capitan/clientes/[id]/PrestamoFormModal.tsx:20:42
+Type error: No overload matches this call.
+  Overload 1 of 2, '(action: (state: { error: string; success?: undefined; } | { success: boolean; error?: undefined; }) => { error: string; success?: undefined; } | { success: boolean; error?: undefined; } | Promise<{ error: string; success?: undefined; } | { ...; }>, initialState: { ...; } | { ...; }, permalink?: string | undefined): [state: ...]', gave the following error.
+    Argument of type '(prevState: any, formData: FormData) => Promise<{ error: string; success?: undefined; } | { success: boolean; error?: undefined; }>' is not assignable to parameter of type '(state: { error: string; success?: undefined; } | { success: boolean; error?: undefined; }) => { error: string; success?: undefined; } | { success: boolean; error?: undefined; } | Promise<{ error: string; success?: undefined; } | { ...; }>'.
+      Target signature provides too few arguments. Expected 2 or more, but got 1.
+  Overload 2 of 2, '(action: (state: { error: string; success?: undefined; } | { success: boolean; error?: undefined; }, payload: FormData) => { error: string; success?: undefined; } | { success: boolean; error?: undefined; } | Promise<...>, initialState: { ...; } | { ...; }, permalink?: string | undefined): [state: ...]', gave the following error.
+    Argument of type '{ error: string; success: boolean; }' is not assignable to parameter of type '{ error: string; success?: undefined; } | { success: boolean; error?: undefined; }'.
+      Type '{ error: string; success: boolean; }' is not assignable to type '{ error: string; success?: undefined; }'.
+        Types of property 'success' are incompatible.
+          Type 'boolean' is not assignable to type 'undefined'.
+
+  [90m18 |[0m [36mexport[0m [36mdefault[0m [36mfunction[0m [33mPrestamoFormModal[0m({ clienteId }: { clienteId: string }) {
+  [90m19 |[0m   [36mconst[0m [isOpen, setIsOpen] = useState([36mfalse[0m);
+[31m[1m>[0m [90m20 |[0m   [36mconst[0m [state, formAction, isPending] = useActionState(crearPrestamo, initialState);
+  [90m   |[0m                                          [31m[1m^[0m
+  [90m21 |[0m
+  [90m22 |[0m   [36mif[0m (state?.success && isOpen) {
+  [90m23 |[0m     setIsOpen([36mfalse[0m);
+Next.js build worker exited with code: 1 and signal: null

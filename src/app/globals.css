@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F4F7FA;
+  --foreground: #111111;
+  --header-bg: #111111;
+  --accent-yellow: #FFD60A;
+  --accent-green: #34D399;
+  --accent-pink: #F472B6;
+  --card-white: #FFFFFF;
+  --card-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  --border-radius-xl: 32px;
+  --border-radius-lg: 24px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-header: var(--header-bg);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-green: var(--accent-green);
+  --color-accent-pink: var(--accent-pink);
+  --color-card-white: var(--card-white);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Premium Card Style */
+.card-premium {
+  background: var(--card-white);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--card-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-premium:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.12);
+}
+
+/* Glassmorphism subtle */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Pill Button */
+.btn-pill {
+  border-radius: 9999px;
+  padding: 12px 24px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Header Curve */
+.header-curve {
+  background: var(--header-bg);
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  padding-bottom: 60px;
+  position: relative;
+}
+
+/* Bottom Nav Pill */
+.bottom-nav-pill {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--header-bg);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
