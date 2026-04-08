@@ -1,13 +1,21 @@
+import { requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import DynamicHeader from "@/components/DynamicHeader";
 import BottomNav from "@/components/BottomNav";
 import RealtimeSubscriber from "@/components/RealtimeSubscriber";
 import { LayoutDashboard, Users, Receipt, FileText } from "lucide-react";
 
-export default function CapitanLayout({
+export default async function CapitanLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  try {
+    await requireAuth("CAPITAN");
+  } catch {
+    redirect("/login");
+  }
+
   const navItems = [
     { name: "Resumen", href: "/capitan", icon: "LayoutDashboard" },
     { name: "Clientes", href: "/capitan/clientes", icon: "Users" },

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
@@ -18,6 +18,12 @@ export default async function ClienteLayout({
 }: {
   children: React.ReactNode;
 }) {
+  try {
+    await requireAuth("CLIENTE");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -29,7 +35,7 @@ export default async function ClienteLayout({
   const { count: unreadCount } = await supabase
     .from("notificaciones")
     .select("*", { count: 'exact', head: true })
-    .eq("usuario_id", user.id)
+    .eq("usuario_id", user!.id)
     .eq("leida", false);
 
   const navLinks = [

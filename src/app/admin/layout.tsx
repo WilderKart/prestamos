@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { ArrowLeft, LogOut } from "lucide-react";
 import AdminSidebar from "./AdminSidebar";
@@ -9,23 +9,15 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: roleData, error } = await supabase.rpc("get_user_role");
-  const roleStr = typeof roleData === 'string' ? roleData : roleData?.[0]?.get_user_role;
-  const parsedRole = roleStr?.toUpperCase();
-
-  if (error || parsedRole !== "ADMIN") {
+  try {
+    const session = await requireAuth("ADMIN");
+  } catch {
     redirect("/login");
   }
 
   async function logout() {
     "use server";
+    const { createClient } = await import("@/utils/supabase/server");
     const supabase = await createClient();
     await supabase.auth.signOut();
     redirect("/login");

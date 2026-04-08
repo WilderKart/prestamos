@@ -27,66 +27,74 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Validate session
+  // ========== ZERO TRUST: Validar sesión primero ==========
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
 
-  const isLoginPage = request.nextUrl.pathname.startsWith('/login');
-  
-  if (user) {
-    if (isLoginPage || request.nextUrl.pathname === '/') {
-      // Validate role using secure RPC function explicitly requested by user
-      const { data: role } = await supabase.rpc('get_user_role');
-      
-      const roleStr = typeof role === 'string' ? role : role?.[0]?.get_user_role;
-      const parsedRole = roleStr?.toUpperCase();
-      
-      let redirectPath = '/cliente'; // fallback or default
-      if (parsedRole === 'ADMIN') redirectPath = '/admin';
-      else if (parsedRole === 'CAPITAN') redirectPath = '/capitan';
-      else redirectPath = '/cliente';
+  // Si hay error o no hay usuario, redirigir a login (excepto si ya está en login)
+  const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/auth");
 
+  if (userError || !user) {
+    if (!isLoginPage && !isAuthRoute) {
       const url = request.nextUrl.clone();
-      url.pathname = redirectPath;
+      url.pathname = "/login";
       return NextResponse.redirect(url);
     }
-  } else if (!isLoginPage && !request.nextUrl.pathname.startsWith('/auth')) {
-    // If no user and not on login/auth, block incorrect route
+    return supabaseResponse;
+  }
+
+  // ========== Usuario autenticado: validar rol ==========
+  const { data: roleData, error: roleError } = await supabase.rpc("get_user_role");
+  
+  // Si hay error obteniendo rol, invalidar sesión
+  if (roleError || !roleData) {
+    if (!isLoginPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    return supabaseResponse;
+  }
+
+  const role = typeof roleData === "string" ? roleData : roleData?.[0]?.get_user_role;
+  const parsedRole = role?.toUpperCase();
+
+  // ========== Redirección según rol ==========
+  // Si está en página de login o raíz, redirigir según su rol
+  if (isLoginPage || request.nextUrl.pathname === "/") {
+    let redirectPath = "/cliente";
+    if (parsedRole === "ADMIN") redirectPath = "/admin";
+    else if (parsedRole === "CAPITAN") redirectPath = "/capitan";
+
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = redirectPath;
     return NextResponse.redirect(url);
   }
 
-  // TODO: we could add specific role guards, e.g., if path starts with /admin but role != ADMIN
-  if (user && !isLoginPage) {
-    // Specific role guarding logic can be placed here
-    // e.g., protect /admin from non-admin, etc.
-    const isAdminRoute = request.nextUrl.pathname.startsWith('/admin');
-    const isCapitanRoute = request.nextUrl.pathname.startsWith('/capitan');
-    const isClienteRoute = request.nextUrl.pathname.startsWith('/cliente');
+  // ========== Proteger rutas por rol ==========
+  const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
+  const isCapitanRoute = request.nextUrl.pathname.startsWith("/capitan");
+  const isClienteRoute = request.nextUrl.pathname.startsWith("/cliente");
 
-    if (isAdminRoute || isCapitanRoute || isClienteRoute) {
-      const { data: role } = await supabase.rpc('get_user_role');
-      const roleStr = typeof role === 'string' ? role : role?.[0]?.get_user_role;
-      const parsedRole = roleStr?.toUpperCase();
-      
-      if (isAdminRoute && parsedRole !== 'ADMIN') {
-         const url = request.nextUrl.clone();
-         url.pathname = parsedRole === 'CAPITAN' ? '/capitan' : '/cliente';
-         return NextResponse.redirect(url);
-      }
-      if (isCapitanRoute && parsedRole !== 'CAPITAN') {
-         const url = request.nextUrl.clone();
-         url.pathname = parsedRole === 'ADMIN' ? '/admin' : '/cliente';
-         return NextResponse.redirect(url);
-      }
-      if (isClienteRoute && parsedRole !== 'CLIENTE') {
-         const url = request.nextUrl.clone();
-         url.pathname = parsedRole === 'ADMIN' ? '/admin' : '/capitan';
-         return NextResponse.redirect(url);
-      }
-    }
+  if (isAdminRoute && parsedRole !== "ADMIN") {
+    const url = request.nextUrl.clone();
+    url.pathname = parsedRole === "CAPITAN" ? "/capitan" : "/cliente";
+    return NextResponse.redirect(url);
+  }
+
+  if (isCapitanRoute && parsedRole !== "CAPITAN") {
+    const url = request.nextUrl.clone();
+    url.pathname = parsedRole === "ADMIN" ? "/admin" : "/cliente";
+    return NextResponse.redirect(url);
+  }
+
+  if (isClienteRoute && parsedRole !== "CLIENTE") {
+    const url = request.nextUrl.clone();
+    url.pathname = parsedRole === "ADMIN" ? "/admin" : "/capitan";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;

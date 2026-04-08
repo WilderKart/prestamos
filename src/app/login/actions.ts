@@ -1,10 +1,10 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createClient, getCurrentUser } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function login(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
 
   if (!email || !password) {
@@ -13,32 +13,51 @@ export async function login(prevState: any, formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error: authError } = await supabase.auth.signInWithPassword({
+  // Intento de login
+  const { data: signInData, error: authError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (authError) {
+  if (authError || !signInData?.user) {
+    console.error("Error de autenticación:", authError?.message);
     return { error: "Credenciales incorrectas." };
   }
 
-  // Verificar existencia (evita que un usuario de auth no inyectado en DB entre)
+  // Verificar que el usuario existe en la tabla usuarios
   const { data: existe, error: existeError } = await supabase.rpc("usuario_existe");
   
   if (existeError || !existe) {
+    console.error("Usuario no existe en tabla usuarios:", existeError);
     await supabase.auth.signOut();
     return { error: "Usuario no autorizado." };
   }
 
-  // Verificar bloqueo
+  // Verificar que el usuario está activo
   const { data: activo, error: activoError } = await supabase.rpc("usuario_activo");
   
   if (activoError || !activo) {
+    console.error("Usuario inactivo:", activoError);
     await supabase.auth.signOut();
     return { error: "Usuario bloqueado." };
   }
 
-  // La redirección ocurrirá por medio del middleware automáticamente.
-  // Solo forzamos un refetch hacia la raíz y el middleware nos enviará a /admin, /cliente o /capitan.
-  redirect("/");
+  // Obtener rol para redirección
+  const { data: roleData, error: roleError } = await supabase.rpc("get_user_role");
+  const role = typeof roleData === "string" ? roleData : roleData?.[0]?.get_user_role;
+
+  // Redireccionar según el rol
+  if (role?.toUpperCase() === "ADMIN") {
+    redirect("/admin");
+  } else if (role?.toUpperCase() === "CAPITAN") {
+    redirect("/capitan");
+  } else {
+    redirect("/cliente");
+  }
+}
+
+export async function logout() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/login");
 }
