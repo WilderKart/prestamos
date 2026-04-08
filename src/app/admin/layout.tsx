@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createClient, requireAuth } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { ArrowLeft, LogOut } from "lucide-react";
