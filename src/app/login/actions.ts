@@ -26,21 +26,32 @@ export async function login(prevState: any, formData: FormData) {
 
   const userId = signInData.user.id;
 
-  // Consultar usuario directamente de la tabla
+  // Forzar refresh para asegurar que la sesión está disponible
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    console.error("No se pudo obtener sesión después del login");
+    await supabase.auth.signOut();
+    return { error: "Error al iniciar sesión." };
+  }
+
+  // Consultar usuario directamente de la tabla usando el cliente actual
+  // El problema es RLS - por eso usamos la sesión verificada
   const { data: usuarioData, error: usuarioError } = await supabase
     .from("usuarios")
     .select("id, rol, estado")
     .eq("id", userId)
-    .maybeSingle();
+    .single();
 
   if (usuarioError) {
     console.error("Error consultando usuario:", usuarioError);
+    console.error("UserID:", userId);
     await supabase.auth.signOut();
     return { error: "Error de base de datos." };
   }
 
   if (!usuarioData) {
-    console.error("Usuario no encontrado en tabla usuarios");
+    console.error("Usuario no encontrado en tabla usuarios, userId:", userId);
     await supabase.auth.signOut();
     return { error: "Usuario no autorizado." };
   }
@@ -52,6 +63,8 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   const role = usuarioData.rol;
+
+  console.log("Login exitoso:", { userId, role, estado: usuarioData.estado });
 
   // Redireccionar según el rol
   if (role === "ADMIN") {
