@@ -13,10 +13,16 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll() {
-          // En Server Components NO escribimos cookies
-          // El middleware maneja la sincronización
-          // Intentar escribir aquí puede causar errores silenciosos
+        setAll(cookiesToSet) {
+          try {
+            // En Server Actions se puede escribir cookies (login, logout, etc.)
+            // En Server Components fallará silenciosamente — el middleware lo maneja
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // No hacer nada en Server Components (solo el middleware puede escribir aquí)
+          }
         },
       },
     }
