@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import { createClient, requireAuth } from "@/utils/supabase/server";
+import { requireAuth } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { ArrowLeft, LogOut } from "lucide-react";
-import AdminSidebar from "./AdminSidebar";
+import { LogOut } from "lucide-react";
 import RealtimeSubscriber from "@/components/RealtimeSubscriber";
+import BackButton from "./BackButton";
+import { logout } from "@/app/actions/logout";
 
 export default async function AdminLayout({
   children,
@@ -12,16 +13,8 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   try {
-    const session = await requireAuth("ADMIN");
+    await requireAuth("ADMIN");
   } catch {
-    redirect("/login");
-  }
-
-  async function logout() {
-    "use server";
-    const { createClient } = await import("@/utils/supabase/server");
-    const supabase = await createClient();
-    await supabase.auth.signOut();
     redirect("/login");
   }
 
@@ -29,16 +22,10 @@ export default async function AdminLayout({
     <div className="min-h-screen bg-[#F3F4F6] flex flex-col font-[family-name:var(--font-inter)]">
       <RealtimeSubscriber role="ADMIN" />
       
-      {/* Header con botón atrás y cerrar sesión */}
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => window.history.back()} 
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Volver atrás"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
+          <BackButton />
           <h1 className="text-lg font-semibold text-gray-900">Panel Admin</h1>
         </div>
         
