@@ -1,15 +1,32 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { UserSquare2, Search, ShieldAlert, Users } from "lucide-react";
 
 export default async function AdminCapitanesPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  // Fetch capitanes
-  const { data: capitanes, error } = await supabase
-    .from("usuarios")
-    .select("id, nombre, email, created_at")
-    .eq("rol", "CAPITAN")
-    .order("created_at", { ascending: false });
+  let capitanes: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("usuarios")
+      .select("id, nombre, email, created_at")
+      .eq("rol", "CAPITAN")
+      .order("created_at", { ascending: false });
+    
+    capitanes = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando capitanes:", e);
+    error = e;
+  }
 
   if (error) {
     return (

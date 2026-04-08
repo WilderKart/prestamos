@@ -1,24 +1,42 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { RefreshCcw, ShieldAlert } from "lucide-react";
 
 export default async function AdminRetanqueosPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  const { data: retanqueos, error } = await supabase
-    .from("solicitudes_retanqueo")
-    .select(`
-      id,
-      cliente_id,
-      prestamo_origen_id,
-      monto_solicitado,
-      estado,
-      created_at,
-      clientes (
-        cedula,
-        usuarios!clientes_usuario_id_fkey(nombre)
-      )
-    `)
-    .order("created_at", { ascending: false });
+  let retanqueos: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("solicitudes_retanqueo")
+      .select(`
+        id,
+        cliente_id,
+        prestamo_origen_id,
+        monto_solicitado,
+        estado,
+        created_at,
+        clientes (
+          cedula,
+          usuarios!clientes_usuario_id_fkey(nombre)
+        )
+      `)
+      .order("created_at", { ascending: false });
+
+    retanqueos = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando retanqueos:", e);
+    error = e;
+  }
 
   if (error) {
     // Es posible que la tabla solicitudes_retanqueo no exista aún o tenga un problema de estructura
@@ -29,7 +47,7 @@ export default async function AdminRetanqueosPage() {
           <ShieldAlert className="w-8 h-8 text-red-400" />
         </div>
         <h3 className="text-lg font-medium text-gray-900">Ocurrió un error al cargar la información</h3>
-        <p className="mt-2 text-sm text-gray-500">Intenta nuevamente. {error.message}</p>
+        <p className="mt-2 text-sm text-gray-500">Intenta nuevamente.</p>
       </div>
     );
   }

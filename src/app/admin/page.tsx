@@ -1,4 +1,5 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { 
   Users, 
   UserSquare2, 
@@ -17,26 +18,44 @@ import {
 import Link from "next/link";
 
 export default async function AdminDashboardPage() {
+  // 🔐 ZERO TRUST: Validar sesión y rol explícitamente en cada página
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  const [
-    { count: totalUsuarios },
-    { count: totalCapitanes },
-    { count: totalClientes },
-    { data: prestamosActivos },
-    { count: prestamosMora },
-    { count: pagosPendientes },
-  ] = await Promise.all([
-    supabase.from("usuarios").select("id", { count: "exact", head: true }),
-    supabase.from("usuarios").select("id", { count: "exact", head: true }).eq("rol", "CAPITAN"),
-    supabase.from("clientes").select("id", { count: "exact", head: true }),
-    supabase.from("prestamos").select("saldo_actual, monto").eq("estado", "ACTIVO"),
-    supabase.from("prestamos").select("id", { count: "exact", head: true }).eq("estado", "EN_MORA"),
-    supabase.from("pagos").select("id", { count: "exact", head: true }).eq("estado", "PENDIENTE_VALIDACION"),
-  ]);
+  let totalUsuarios = 0;
+  let totalCapitanes = 0;
+  let totalClientes = 0;
+  let prestamosActivos: { saldo_actual: number }[] = [];
+  let prestamosMora = 0;
+  let pagosPendientes = 0;
 
-  const carteraTotal = prestamosActivos?.reduce((acc, curr) => acc + (curr.saldo_actual || 0), 0) || 0;
-  const numPrestamosActivos = prestamosActivos?.length || 0;
+  try {
+    const results = await Promise.all([
+      supabase.from("usuarios").select("id", { count: "exact", head: true }),
+      supabase.from("usuarios").select("id", { count: "exact", head: true }).eq("rol", "CAPITAN"),
+      supabase.from("clientes").select("id", { count: "exact", head: true }),
+      supabase.from("prestamos").select("saldo_actual, monto").eq("estado", "ACTIVO"),
+      supabase.from("prestamos").select("id", { count: "exact", head: true }).eq("estado", "EN_MORA"),
+      supabase.from("pagos").select("id", { count: "exact", head: true }).eq("estado", "PENDIENTE_VALIDACION"),
+    ]);
+
+    totalUsuarios = results[0].count || 0;
+    totalCapitanes = results[1].count || 0;
+    totalClientes = results[2].count || 0;
+    prestamosActivos = results[3].data || [];
+    prestamosMora = results[4].count || 0;
+    pagosPendientes = results[5].count || 0;
+  } catch (error) {
+    console.error("Error cargando datos del dashboard:", error);
+  }
+
+  const carteraTotal = prestamosActivos.reduce((acc, curr) => acc + (curr.saldo_actual || 0), 0);
+  const numPrestamosActivos = prestamosActivos.length;
 
   const stats = [
     { name: 'Total Usuarios', value: totalUsuarios || 0, icon: Users, color: 'text-white', bg: 'bg-black', rotate: '-rotate-3' },

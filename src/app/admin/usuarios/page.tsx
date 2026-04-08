@@ -1,4 +1,5 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import UserActionClient from "./UserActionClient";
 import CrearCapitanModal from "./CrearCapitanModal";
 import { Users, Search, ShieldAlert, CheckCircle, Ban } from "lucide-react";
@@ -8,6 +9,12 @@ export default async function AdminUsuariosPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
   const rawQ = await searchParams;
   const q = rawQ?.q || "";

@@ -1,27 +1,44 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { Receipt, ShieldAlert } from "lucide-react";
 
 export default async function AdminPagosPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  // Pagos con info del prestamo
-  const { data: pagos, error } = await supabase
-    .from("pagos")
-    .select(`
-      id,
-      valor,
-      metodo,
-      estado,
-      created_at,
-      prestamo_id,
-      prestamos (
-        clientes (
-          cedula,
-          usuarios!clientes_usuario_id_fkey(nombre)
+  let pagos: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("pagos")
+      .select(`
+        id,
+        valor,
+        metodo,
+        estado,
+        created_at,
+        prestamo_id,
+        prestamos (
+          clientes (
+            cedula,
+            usuarios!clientes_usuario_id_fkey(nombre)
+          )
         )
-      )
-    `)
-    .order("created_at", { ascending: false });
+      `)
+      .order("created_at", { ascending: false });
+
+    pagos = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando pagos:", e);
+    error = e;
+  }
 
   if (error) {
     return (

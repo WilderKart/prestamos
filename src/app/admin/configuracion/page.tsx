@@ -1,15 +1,32 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { Settings, ShieldAlert, Edit2 } from "lucide-react";
 import ConfigForm from "./ConfigForm";
 
 export default async function AdminConfiguracionPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  // Se asume la tabla configuracion_sistema por instrucciones previas.
-  const { data: configs, error } = await supabase
-    .from("configuracion_sistema")
-    .select("clave, valor, descripcion")
-    .order("clave", { ascending: true });
+  let configs: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("configuracion_sistema")
+      .select("clave, valor, descripcion")
+      .order("clave", { ascending: true });
+    
+    configs = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando configuración:", e);
+    error = e;
+  }
 
   if (error) {
     return (

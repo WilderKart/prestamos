@@ -1,22 +1,40 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { List, ShieldAlert } from "lucide-react";
 
 export default async function AdminLogsPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  const { data: logs, error } = await supabase
-    .from("admin_logs")
-    .select(`
-      id,
-      admin_id,
-      accion,
-      modulo,
-      entidad_id,
-      descripcion,
-      created_at,
-      usuarios!admin_logs_admin_id_fkey(nombre)
-    `)
-    .order("created_at", { ascending: false });
+  let logs: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("admin_logs")
+      .select(`
+        id,
+        admin_id,
+        accion,
+        modulo,
+        entidad_id,
+        descripcion,
+        created_at,
+        usuarios!admin_logs_admin_id_fkey(nombre)
+      `)
+      .order("created_at", { ascending: false });
+
+    logs = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando logs:", e);
+    error = e;
+  }
 
   if (error) {
     return (
@@ -25,7 +43,9 @@ export default async function AdminLogsPage() {
           <ShieldAlert className="w-8 h-8 text-red-400" />
         </div>
         <h3 className="text-lg font-medium text-gray-900">Ocurrió un error al cargar la información</h3>
-        <p className="mt-2 text-sm text-gray-500">Intenta nuevamente. {error.message}</p>
+        <p className="mt-2 text-sm text-gray-500">
+          Intenta nuevamente.
+        </p>
       </div>
     );
   }

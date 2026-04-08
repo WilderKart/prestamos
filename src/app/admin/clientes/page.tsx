@@ -1,20 +1,38 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, requireAuth } from "@/utils/supabase/server";
+import { redirect } from "next/navigation";
 import { UserCircle2, ShieldAlert } from "lucide-react";
 
 export default async function AdminClientesPage() {
+  try {
+    await requireAuth("ADMIN");
+  } catch {
+    redirect("/login");
+  }
+
   const supabase = await createClient();
 
-  const { data: clientes, error } = await supabase
-    .from("clientes")
-    .select(`
-      id, 
-      cedula, 
-      telefono, 
-      score, 
-      capitan_id, 
-      usuarios!clientes_usuario_id_fkey(nombre, email)
-    `)
-    .order("cedula", { ascending: true });
+  let clientes: any[] = [];
+  let error: any = null;
+
+  try {
+    const result = await supabase
+      .from("clientes")
+      .select(`
+        id, 
+        cedula, 
+        telefono, 
+        score, 
+        capitan_id, 
+        usuarios!clientes_usuario_id_fkey(nombre, email)
+      `)
+      .order("cedula", { ascending: true });
+    
+    clientes = result.data || [];
+    error = result.error;
+  } catch (e) {
+    console.error("Error cargando clientes:", e);
+    error = e;
+  }
 
   if (error) {
     return (
