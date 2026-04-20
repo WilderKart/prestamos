@@ -25,6 +25,8 @@ export default async function Home() {
       redirect("/capitan");
     case "CLIENTE":
       redirect("/cliente");
+    case "COBRADOR":
+      redirect("/cobrador/mision");
     default:
       redirect("/login");
   }

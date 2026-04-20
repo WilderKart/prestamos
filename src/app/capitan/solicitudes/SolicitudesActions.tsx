@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { aprobarSolicitud, rechazarSolicitud, solicitarFiador } from "./actions";
-import { Check, X, UserPlus, Loader2 } from "lucide-react";
+import { 
+  CheckCircle, 
+  XCircle, 
+  UserPlus, 
+  CircleNotch,
+  WarningCircle,
+  ChatCircleText,
+  CaretRight,
+  ShieldCheck,
+  X
+} from "@phosphor-icons/react";
 import DesembolsoFormModal from "./DesembolsoFormModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function SolicitudesActions({
   solicitudId,
@@ -18,7 +29,6 @@ export default function SolicitudesActions({
 }) {
   const [action, setAction] = useState<string | null>(null);
   const [showFiadorModal, setShowFiadorModal] = useState(false);
-  const [motivoRechazo, setMotivoRechazo] = useState("");
   const [motivoFiador, setMotivoFiador] = useState("");
   const [showDesembolso, setShowDesembolso] = useState(false);
   const [aprobadoPrestamoId, setAprobadoPrestamoId] = useState<string | undefined>(prestamoId);
@@ -38,8 +48,11 @@ export default function SolicitudesActions({
   };
 
   const handleRechazar = async () => {
+    const motivo = prompt("Motivo del rechazo (opcional):");
+    if (motivo === null) return;
+    
     setAction("rechazar");
-    await rechazarSolicitud(solicitudId, motivoRechazo || undefined);
+    await rechazarSolicitud(solicitudId, motivo || undefined);
     setAction(null);
   };
 
@@ -52,16 +65,16 @@ export default function SolicitudesActions({
 
   return (
     <>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={handleAprobar}
           disabled={action !== null}
-          className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-500 rounded-xl hover:bg-green-500/20 transition-all disabled:opacity-50 font-bold text-sm"
+          className="flex-1 min-w-[120px] h-12 bg-ios-green text-white rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest shadow-lg shadow-ios-green/10 active:scale-95 transition-all disabled:opacity-50"
         >
           {action === "aprobar" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <CircleNotch className="w-5 h-5 animate-spin" weight="bold" />
           ) : (
-            <Check className="w-4 h-4" />
+            <CheckCircle className="w-5 h-5" weight="fill" />
           )}
           Aprobar
         </button>
@@ -69,68 +82,95 @@ export default function SolicitudesActions({
         <button
           onClick={() => setShowFiadorModal(true)}
           disabled={action !== null}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl hover:bg-orange-500/20 transition-all disabled:opacity-50 font-bold text-sm"
+          className="flex-1 min-w-[150px] h-12 bg-ios-blue/10 text-ios-blue rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
         >
-          <UserPlus className="w-4 h-4" />
-          Solicitar Fiador
+          <UserPlus className="w-5 h-5" weight="fill" />
+          Pedir Fiador
         </button>
 
         <button
-          onClick={async () => {
-            const motivo = prompt("Motivo del rechazo (opcional):");
-            if (motivo !== null) {
-              setMotivoRechazo(motivo);
-              await handleRechazar();
-            }
-          }}
+          onClick={handleRechazar}
           disabled={action !== null}
-          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 transition-all disabled:opacity-50 font-bold text-sm"
+          className="flex-1 min-w-[120px] h-12 bg-ios-pink/5 text-ios-pink rounded-xl flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
         >
           {action === "rechazar" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <CircleNotch className="w-5 h-5 animate-spin" weight="bold" />
           ) : (
-            <X className="w-4 h-4" />
+            <XCircle className="w-5 h-5" weight="fill" />
           )}
           Rechazar
         </button>
       </div>
 
-      {showFiadorModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-mivank-card border border-mivank-border rounded-2xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-mivank-text mb-4">
-              Solicitar Fiador
-            </h3>
-            <textarea
-              value={motivoFiador}
-              onChange={(e) => setMotivoFiador(e.target.value)}
-              placeholder="Motivo por el que se requiere fiador (opcional)"
-              className="w-full rounded-xl bg-mivank-elevated border border-mivank-border px-4 py-3 text-sm text-mivank-text focus:ring-2 focus:ring-mivank-accent/50 outline-none resize-none mb-4"
-              rows={3}
+      <AnimatePresence>
+        {showFiadorModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              onClick={() => setShowFiadorModal(false)}
             />
-            <div className="flex gap-2">
-              <button
-                onClick={handleSolicitarFiador}
-                disabled={action === "fiador"}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-mivank-accent text-mivank-bg rounded-xl hover:opacity-90 transition-all disabled:opacity-50 font-bold text-sm"
-              >
-                {action === "fiador" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <UserPlus className="w-4 h-4" />
-                )}
-                Confirmar
-              </button>
-              <button
-                onClick={() => setShowFiadorModal(false)}
-                className="px-4 py-2 bg-mivank-elevated text-mivank-text rounded-xl hover:bg-mivank-elevated/80 transition-all font-bold text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
+
+            {/* Modal Content */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-md rounded-[40px] shadow-2xl overflow-hidden p-8"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-[900] text-black tracking-tighter">Garantía Requerida</h3>
+                  <p className="text-[13px] font-medium text-black/40">Especifica por qué se necesita un fiador.</p>
+                </div>
+                <button 
+                  onClick={() => setShowFiadorModal(false)}
+                  className="w-10 h-10 bg-black/5 rounded-2xl flex items-center justify-center text-black/30 hover:text-black transition-colors"
+                >
+                  <X weight="bold" size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="relative">
+                  <ChatCircleText weight="fill" size={20} className="absolute left-5 top-5 text-black/10" />
+                  <textarea
+                    value={motivoFiador}
+                    onChange={(e) => setMotivoFiador(e.target.value)}
+                    placeholder="Escribe el reporte técnico..."
+                    className="w-full rounded-[24px] bg-black/[0.03] border-none px-14 py-5 text-[15px] font-bold text-black focus:ring-4 focus:ring-ios-blue/10 outline-none resize-none transition-all"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleSolicitarFiador}
+                    disabled={action === "fiador"}
+                    className="flex-[2] h-14 bg-black text-white rounded-[20px] flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-95 disabled:opacity-50"
+                  >
+                    {action === "fiador" ? (
+                      <CircleNotch className="w-5 h-5 animate-spin" weight="bold" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5" weight="fill" />
+                    )}
+                    Confirmar
+                  </button>
+                  <button
+                    onClick={() => setShowFiadorModal(false)}
+                    className="flex-1 h-14 bg-black/[0.03] text-black/30 rounded-[20px] font-black text-[11px] uppercase tracking-widest"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {showDesembolso && aprobadoPrestamoId && (
         <DesembolsoFormModal

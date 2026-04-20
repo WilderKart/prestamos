@@ -1,9 +1,26 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
+import { usePersistentForm } from "@/hooks/usePersistentForm";
 import { crearPrestamo } from "./actions";
-import { Plus, Loader2, X, Wallet, Calendar, Percent, Hash, Zap } from "lucide-react";
+import { 
+  Plus, 
+  CircleNotch, 
+  X, 
+  Wallet, 
+  CalendarBlank, 
+  Percent, 
+  Hash, 
+  Lightning,
+  Money,
+  Clock,
+  CheckCircle,
+  Sparkle,
+  CurrencyDollar
+} from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatCurrency } from "@/utils/format";
+import IosModal from "@/components/ui/IosModal";
 
 const initialState: any = {
   error: "",
@@ -14,93 +31,108 @@ export default function PrestamoFormModal({ clienteId }: { clienteId: string }) 
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(crearPrestamo, initialState);
 
-  if (state?.success && isOpen) {
-    setIsOpen(false);
-    state.success = false;
-  }
+  const { data: draft, setFieldValue, clearDraft } = usePersistentForm(`crear-prestamo-${clienteId}`, {
+    monto: "",
+    interes: "20",
+    frecuencia: "DIARIA",
+    numeroCuotas: "30",
+    fechaInicio: new Date().toISOString().split('T')[0],
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFieldValue(e.target.name as any, e.target.value);
+  };
+
+  // Cálculos en tiempo real para el Resumen
+  const capitalVal = parseFloat(draft.monto) || 0;
+  const interesTasa = parseFloat(draft.interes) || 0;
+  const nCuotas = parseInt(draft.numeroCuotas) || 0;
+
+  const interesMonetario = Math.round(capitalVal * (interesTasa / 100) * 100) / 100;
+  const totalPagar = capitalVal + interesMonetario;
+  const cuotaValor = nCuotas > 0 ? Math.round((totalPagar / nCuotas) * 100) / 100 : 0;
+
+  useEffect(() => {
+    if (state?.success && isOpen) {
+      const timer = setTimeout(() => {
+        setIsOpen(false);
+        clearDraft();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [state?.success, isOpen, clearDraft]);
 
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="btn-pill bg-[#111111] text-white flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10 px-6 py-4"
+        className="flex items-center justify-center gap-3 bg-ios-blue text-white px-8 py-4 rounded-[22px] font-[800] text-[13px] uppercase tracking-[2px] shadow-xl shadow-ios-blue/20 hover:scale-105 active:scale-95 transition-all"
       >
-        <Plus className="w-5 h-5 text-accent-yellow" />
-        <span className="font-black text-sm tracking-widest uppercase">Nuevo Crédito</span>
+        <Plus weight="bold" size={20} />
+        NUEVO CRÉDITO
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md" 
-            />
-            
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-[#F8F9FB] rounded-[40px] shadow-2xl w-full max-w-lg overflow-hidden relative z-10 border border-white/20"
-            >
-              {/* Header */}
-              <div className="bg-[#111111] p-8 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent-yellow/10 rounded-full blur-3xl" />
-                <div className="flex items-center justify-between relative z-10">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                       <Wallet className="w-4 h-4 text-accent-yellow" />
-                       <span className="text-[10px] font-black uppercase tracking-[3px] text-gray-400">Configuración</span>
-                    </div>
-                    <h2 className="text-3xl font-black tracking-tighter uppercase">Nuevo Préstamo</h2>
-                  </div>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-2xl transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
+      <IosModal
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Estructurar Crédito"
+        subtitle="Configuración de Cartera"
+        icon={<Wallet weight="fill" size={24} />}
+      >
+        {state?.success ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="py-8 text-center"
+          >
+            <div className="w-20 h-20 bg-ios-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle weight="fill" className="w-12 h-12 text-ios-green" />
+            </div>
+            <h4 className="text-[22px] font-[900] text-black tracking-tight">¡Solicitud Emitida!</h4>
+            <p className="text-[14px] font-semibold text-ios-gray mt-2">El crédito ha sido creado exitosamente en el sistema.</p>
+          </motion.div>
+        ) : (
+          <form action={formAction} className="space-y-6">
+            <input type="hidden" name="clienteId" value={clienteId} />
+
+            {state?.error && (
+              <div className="p-4 bg-ios-pink/5 border border-ios-pink/10 text-ios-pink text-[11px] font-black uppercase tracking-wider rounded-2xl flex items-center gap-3">
+                <X weight="bold" size={16} />
+                {state.error}
               </div>
+            )}
 
-              <form action={formAction} className="p-8 space-y-6">
-                <input type="hidden" name="clienteId" value={clienteId} />
-
-                {state?.error && (
-                  <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-black uppercase rounded-2xl flex items-center gap-3">
-                    <X className="w-4 h-4" />
-                    {state.error}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Monto Solicitado</label>
-                     <div className="relative">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</div>
-                        <input
-                           type="number"
-                           name="monto"
-                           required
-                           className="w-full rounded-2xl border-none bg-white px-10 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none shadow-sm"
-                           placeholder="0.00"
-                           disabled={isPending}
-                        />
-                     </div>
+            <div className="ios-card bg-white p-6 space-y-6 border-none shadow-sm">
+              <div className="grid grid-cols-1 gap-6">
+                 <div className="space-y-2">
+                   <label className="ios-section-title pl-0 mb-1">Monto Capital</label>
+                   <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ios-blue font-black text-lg">$</div>
+                      <input
+                         type="number"
+                         name="monto"
+                         value={draft.monto}
+                         onChange={handleChange}
+                         required
+                         className="w-full ios-input pl-10 text-[18px] font-[900] text-black tracking-tight"
+                         placeholder="0.00"
+                         disabled={isPending}
+                      />
                    </div>
+                 </div>
 
+                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tasa Interés (%)</label>
+                     <label className="ios-section-title pl-0 mb-1">Interés (%)</label>
                      <div className="relative">
-                        <Percent className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Percent weight="fill" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ios-gray opacity-30" />
                         <input
                            type="number"
                            name="interes"
+                           value={draft.interes}
+                           onChange={handleChange}
                            required
-                           className="w-full rounded-2xl border-none bg-white px-10 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none shadow-sm"
+                           className="w-full ios-input pl-11 text-[18px] font-[900] text-black tracking-tight"
                            placeholder="20"
                            disabled={isPending}
                         />
@@ -108,11 +140,33 @@ export default function PrestamoFormModal({ clienteId }: { clienteId: string }) 
                    </div>
 
                    <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Frecuencia Pago</label>
-                     <select
+                     <label className="ios-section-title pl-0 mb-1">Nº Cuotas</label>
+                     <div className="relative">
+                        <Hash weight="bold" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-ios-gray opacity-30" />
+                        <input
+                           type="number"
+                           name="numeroCuotas"
+                           value={draft.numeroCuotas}
+                           onChange={handleChange}
+                           required
+                           className="w-full ios-input pl-11 text-[18px] font-[900] text-black tracking-tight"
+                           placeholder="30"
+                           disabled={isPending}
+                        />
+                     </div>
+                   </div>
+                 </div>
+
+                 <div className="space-y-2">
+                   <label className="ios-section-title pl-0 mb-1">Frecuencia</label>
+                    <div className="relative">
+                      <Clock weight="fill" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ios-gray opacity-30 pointer-events-none" />
+                      <select
                         name="frecuencia"
+                        value={draft.frecuencia}
+                        onChange={handleChange}
                         required
-                        className="w-full rounded-2xl border-none bg-white px-5 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none shadow-sm appearance-none"
+                        className="w-full ios-input pl-11 text-[15px] font-[900] text-black tracking-tight appearance-none bg-white"
                         disabled={isPending}
                      >
                         <option value="DIARIA">DIARIA</option>
@@ -120,56 +174,82 @@ export default function PrestamoFormModal({ clienteId }: { clienteId: string }) 
                         <option value="QUINCENAL">QUINCENAL</option>
                         <option value="MENSUAL">MENSUAL</option>
                      </select>
-                   </div>
+                    </div>
+                 </div>
 
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nº de Cuotas</label>
-                     <div className="relative">
-                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                 <div className="space-y-2">
+                    <label className="ios-section-title pl-0 mb-1">Fecha de Desembolso</label>
+                    <div className="relative">
+                       <CalendarBlank weight="fill" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ios-gray opacity-30" />
                         <input
-                           type="number"
-                           name="numeroCuotas"
-                           required
-                           className="w-full rounded-2xl border-none bg-white px-10 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none shadow-sm"
-                           placeholder="30"
-                           disabled={isPending}
-                        />
-                     </div>
-                   </div>
-                </div>
+                          type="date"
+                          name="fechaInicio"
+                          required
+                          value={draft.fechaInicio}
+                          onChange={handleChange}
+                          className="w-full ios-input pl-11 text-[15px] font-[900] text-black tracking-tight"
+                          disabled={isPending}
+                       />
+                    </div>
+                 </div>
+              </div>
+            </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fecha de Inicio</label>
-                  <div className="relative">
-                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                     <input
-                        type="date"
-                        name="fechaInicio"
-                        required
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        className="w-full rounded-2xl border-none bg-white px-10 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none shadow-sm"
-                        disabled={isPending}
-                     />
+            {/* Financial Summary */}
+            {capitalVal > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="ios-glass bg-ios-blue/5 border-none p-6 rounded-[28px] space-y-4"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkle weight="fill" className="text-ios-blue" size={16} />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-ios-blue">Resumen del Plan</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-ios-gray uppercase tracking-wider">Interés Total</p>
+                    <p className="text-[15px] font-[900] text-black tracking-tight">{formatCurrency(interesMonetario)}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[10px] font-bold text-ios-gray uppercase tracking-wider">Total a Pagar</p>
+                    <p className="text-[17px] font-[1000] text-ios-blue tracking-tighter">{formatCurrency(totalPagar)}</p>
                   </div>
                 </div>
 
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={isPending}
-                    className="w-full btn-pill bg-[#111111] text-white flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 shadow-2xl shadow-black/20 h-16 disabled:opacity-50 transition-all"
-                  >
-                    <span className="font-black text-sm tracking-widest uppercase">
-                      {isPending ? "Procesando..." : "Emitir Crédito"}
-                    </span>
-                    {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-accent-yellow" />}
-                  </button>
+                <div className="pt-4 border-t border-ios-blue/10 flex justify-between items-center">
+                   <div className="flex items-center gap-2">
+                     <div className="w-2 h-2 rounded-full bg-ios-green animate-pulse" />
+                     <p className="text-[11px] font-bold text-ios-gray uppercase tracking-wider">Valor por Cuota</p>
+                   </div>
+                   <p className="text-[18px] font-[1000] text-black tracking-tighter">{formatCurrency(cuotaValor)}</p>
                 </div>
-              </form>
-            </motion.div>
-          </div>
+              </motion.div>
+            )}
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full ios-btn-primary h-[64px] shadow-2xl shadow-ios-blue/30 flex items-center justify-center gap-3"
+              >
+                {isPending ? (
+                  <>
+                    <CircleNotch weight="bold" className="w-5 h-5 animate-spin" />
+                    PROCESANDO...
+                  </>
+                ) : (
+                  <>
+                    <Lightning weight="fill" size={22} className="text-ios-yellow" />
+                    EMITIR CRÉDITO
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         )}
-      </AnimatePresence>
+      </IosModal>
     </>
   );
 }

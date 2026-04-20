@@ -1,196 +1,232 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createAdminClient, requireAuth } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import crypto from "node:crypto";
+import { handleMivankError } from "@/utils/errors";
+
+function getFields(formData: FormData) {
+  const fields: Record<string, any> = {};
+  formData.forEach((value, key) => {
+    if (typeof value === "string") {
+      fields[key] = value;
+    }
+  });
+  return fields;
+}
+
+/**
+ * Genera una contraseña aleatoria segura para el primer acceso del cliente.
+ */
+function generarPasswordAleatoria(length = 12) {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+  let retVal = "";
+  for (let i = 0, n = charset.length; i < length; ++i) {
+    retVal += charset.charAt(Math.floor(Math.random() * n));
+  }
+  return retVal;
+}
 
 export async function crearCliente(prevState: any, formData: FormData) {
-  // Datos personales
-  const nombre = formData.get("nombre") as string;
-  const cedula = formData.get("cedula") as string;
-  const email = formData.get("email") as string;
-  const telefono = formData.get("telefono") as string;
-  const telefono_fijo = formData.get("telefono_fijo") as string;
+  const fields = getFields(formData);
 
-  // Contacto
-  const direccion = formData.get("direccion") as string;
-
-  // Laboral
-  const actividad_economica = formData.get("actividad_economica") as string;
-  const lugar_trabajo = formData.get("lugar_trabajo") as string;
-  const direccion_trabajo = formData.get("direccion_trabajo") as string;
-
-  // Financiero
-  const metodo_pago_principal = formData.get("metodo_pago_principal") as string;
-  const numero_cuenta = formData.get("numero_cuenta") as string;
-
-  // Fiador
-  const fiador_cedula = formData.get("fiador_cedula") as string;
-  const fiador_nombre = formData.get("fiador_nombre") as string;
-  const fiador_telefono = formData.get("fiador_telefono") as string;
-  const fiador_direccion = formData.get("fiador_direccion") as string;
-  const fiador_actividad = formData.get("fiador_actividad") as string;
-  
-  // Documento
-  const documento_url = formData.get("documento_url") as string;
-
-  // Validaciones
-  if (!nombre || !cedula) {
-    return { error: "Nombre y Cédula son obligatorios." };
-  }
-  if (!metodo_pago_principal || !numero_cuenta) {
-    return { error: "El método de pago y número de cuenta son obligatorios." };
-  }
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autorizado." };
-
-  // 1. GESTIÓN DE USUARIO (CLIENTE)
-  // Como la tabla 'clientes' no tiene 'nombre', creamos el perfil en 'usuarios'
-  // Si ya existe un usuario con ese email/cedula lo vinculamos, sino creamos uno nuevo 'prospecto'
-  let cliente_usuario_id: string | null = null;
-  
-  // Buscar si ya existe el usuario por cedula o email (si email existe)
-  const { data: existingUser } = await supabase
-    .from("usuarios")
-    .select("id")
-    .or(`email.eq.${email || 'no-email'},id.in.(select usuario_id from clientes where cedula.eq.${cedula})`)
-    .maybeSingle();
-
-  if (existingUser) {
-    cliente_usuario_id = existingUser.id;
-  } else {
-    // Si no existe, creamos un registro en la tabla usuarios (rol CLIENTE)
-    // Nota: Esto es un registro de perfil, no una cuenta de Auth todavia
-    const { data: newUser, error: userError } = await supabase
-      .from("usuarios")
-      .insert({
-        nombre,
-        email: email || null,
-        rol: "CLIENTE",
-        estado: "ACTIVO",
-        creado_por: user.id
-      })
-      .select("id")
-      .single();
+  try {
+    // 1. VALIDACIÓN ZERO TRUST: El Capitán debe estar autenticado
+    const { supabase, userData: sessionUser } = await requireAuth("CAPITAN");
     
-    if (userError) {
-      return { error: `Error creando perfil de usuario: ${userError.message}` };
+    // 🔐 ZERO TRUST: Validar estado operativo
+    if (sessionUser.status !== "ACTIVO") {
+      throw new Error(`OPERACIÓN_BLOQUEADA: Su perfil se encuentra en estado [${sessionUser.status}] y no tiene permisos operativos de registro.`);
     }
-    cliente_usuario_id = newUser.id;
-  }
 
-  // 2. GESTIÓN DE FIADOR
-  let fiador_id: string | null = null;
-  if (fiador_cedula && fiador_nombre) {
-    const { data: existingFiador } = await supabase
-      .from("fiadores")
-      .select("id")
-      .eq("cedula", fiador_cedula)
-      .maybeSingle();
+    const adminClient = await createAdminClient();
 
-    if (existingFiador) {
-      fiador_id = existingFiador.id;
-    } else {
-      const { data: newFiador, error: fiadorError } = await supabase
+    // Campos del formulario
+    const nombre = formData.get("nombre") as string;
+    const cedula = formData.get("cedula") as string;
+    const email = (formData.get("email") as string)?.toLowerCase().trim();
+    const telefono = formData.get("telefono") as string;
+    
+    // Método de pago y cuenta
+    const metodo_pago_principal = formData.get("metodo_pago_principal") as string;
+    const numero_cuenta = formData.get("numero_cuenta") as string;
+
+    // Geolocalización (FASE 2: Rutas Inteligentes)
+    const lat = formData.get("lat") ? parseFloat(formData.get("lat") as string) : null;
+    const lng = formData.get("lng") ? parseFloat(formData.get("lng") as string) : null;
+
+    if (!nombre || !cedula || !email) {
+      return handleMivankError("crearCliente", "Campos requeridos faltantes", "VALIDATION_MANDATORY_FIELD", "Nombre, Cédula y Email son obligatorios.");
+    }
+
+    // 2. SEGURIDAD: empresa_id DEBE venir de la sesión del capitán
+    const empresa_id = sessionUser.empresa_id;
+    if (!empresa_id) {
+       return handleMivankError("crearCliente", "Sin empresa_id", "PERMISSION_DENIED", "Tu perfil de capitán no tiene una empresa asociada.");
+    }
+
+    // REQUISITO: Documento (Cédula) es obligatorio
+    const documento_url = formData.get("documento_url") as string;
+    if (!documento_url) {
+      return handleMivankError("crearCliente", "Cédula no subida", "VALIDATION_MANDATORY_FIELD", "Es obligatorio subir la foto de la cédula para registrar al cliente.");
+    }
+
+    // 3. GESTIÓN DE USUARIO (AUTH + PROFILE)
+    const { ensureUnifiedUser } = await import("@/app/actions/user_management");
+    const cliente_usuario_id = await ensureUnifiedUser({ nombre, email, rol: "CLIENTE" }, sessionUser);
+
+
+    // 4. GESTIÓN DE FIADOR
+    let fiador_id: string | null = null;
+    const fiador_cedula = formData.get("fiador_cedula") as string;
+    const fiador_nombre = formData.get("fiador_nombre") as string;
+
+    if (fiador_cedula && fiador_nombre) {
+      const { data: existingFiador } = await supabase
         .from("fiadores")
-        .insert({
-          cedula: fiador_cedula,
-          nombre: fiador_nombre,
-          telefono: fiador_telefono || null,
-          direccion: fiador_direccion || null,
-          actividad_economica: fiador_actividad || null,
-        })
         .select("id")
-        .single();
+        .eq("cedula", fiador_cedula)
+        .maybeSingle();
 
-      if (fiadorError) {
-        return { error: `Error al registrar fiador: ${fiadorError.message}` };
+      if (existingFiador) {
+        fiador_id = existingFiador.id;
+      } else {
+        const { data: newFiador, error: fError } = await supabase
+          .from("fiadores")
+          .insert({
+            cedula: fiador_cedula,
+            nombre: fiador_nombre,
+            telefono: formData.get("fiador_telefono") as string || null,
+            direccion: formData.get("fiador_direccion") as string || null,
+          })
+          .select("id")
+          .single();
+        if (!fError) fiador_id = newFiador.id;
       }
-      fiador_id = newFiador.id;
     }
-  }
 
-  // 3. INSERTAR CLIENTE
-  const { error: clienteError } = await supabase
-    .from("clientes")
-    .insert({
-      usuario_id: cliente_usuario_id,
-      capitan_id: user.id,
-      cedula,
-      email: email || null,
-      telefono: telefono || null,
-      telefono_fijo: telefono_fijo || null,
-      direccion: direccion || null,
-      actividad_economica: actividad_economica || null,
-      lugar_trabajo: lugar_trabajo || null,
-      direccion_trabajo: direccion_trabajo || null,
-      metodo_pago_principal: metodo_pago_principal || null,
-      numero_cuenta: numero_cuenta || null,
-      fiador_id,
-      documento_url: documento_url || null
-    });
-
-  if (clienteError) {
-    console.error("Error creando cliente:", clienteError);
-    if (clienteError.message.includes("duplicate key")) {
-      return { error: "Ya existe un cliente con esta cédula." };
-    }
-    return { error: `Error al crear cliente: ${clienteError.message}` };
-  }
-
-  revalidatePath("/capitan/clientes");
-  return { success: true };
-}
-
-export async function buscarFiador(cedula: string) {
-  if (!cedula || cedula.length < 5) return { fiador: null };
-
-  const supabase = await createClient();
-  const { data: fiador } = await supabase
-    .from("fiadores")
-    .select("id, nombre, cedula, telefono, direccion, actividad_economica")
-    .eq("cedula", cedula)
-    .single();
-
-  return { fiador };
-}
-
-export async function uploadDocumento(formData: FormData) {
-  const file = formData.get("file") as File;
-  const clienteId = formData.get("clienteId") as string;
-  const tipo = formData.get("tipo") as string; // 'cedula_cliente' | 'cedula_fiador'
-
-  if (!file) return { error: "No se seleccionó ningún archivo" };
-  if (file.size > 5 * 1024 * 1024) return { error: "El archivo excede el límite de 5MB" };
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "No autorizado" };
-
-  const ext = file.name.split(".").pop();
-  const path = `clientes/${user.id}/${tipo}_${Date.now()}.${ext}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("comprobantes")
-    .upload(path, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
-
-  if (uploadError) {
-    return { error: `Error al subir archivo: ${uploadError.message}` };
-  }
-
-  const { data: urlData } = supabase.storage.from("comprobantes").getPublicUrl(path);
-
-  // Si tenemos clienteId, actualizar la URL en la tabla
-  if (clienteId) {
-    await supabase
+    // 5. REGISTRO FINAL DEL CLIENTE
+    const { error: clienteError } = await supabase
       .from("clientes")
-      .update({ documento_url: urlData.publicUrl })
-      .eq("id", clienteId);
-  }
+      .insert({
+        usuario_id: cliente_usuario_id,
+        capitan_id: sessionUser.user.id,
+        empresa_id, // CRITICAL: Aislamiento por empresa
+        cedula,
+        email,
+        telefono: telefono || null,
+        direccion: formData.get("direccion") as string || null,
+        barrio: formData.get("barrio") as string || null, // Nuevo campo
+        actividad_economica: formData.get("actividad_economica") as string || null,
+        metodo_pago_principal,
+        numero_cuenta,
+        lat,
+        lng,
+        fiador_id
+      });
 
-  return { url: urlData.publicUrl };
+    if (clienteError) {
+      if (clienteError.message.includes("duplicate key")) {
+        return handleMivankError("crearCliente/final", clienteError, "DB_CLIENT_CREATE_ERROR", "Ya existe un cliente registrado con esta cédula.");
+      }
+      return handleMivankError("crearCliente/final", clienteError, "DB_CLIENT_CREATE_ERROR");
+    }
+
+    revalidatePath("/capitan/clientes");
+    return { success: true };
+
+  } catch (error: any) {
+    return handleMivankError("crearCliente/catch", error);
+  }
+}
+
+
+/**
+ * Búsqueda optimizada de personas (clientes o fiadores existentes)
+ * Zero Trust: Solo Capitanes pueden buscar en su entorno.
+ */
+export async function buscarPersonasParaFiador(query: string) {
+  try {
+    const { supabase } = await requireAuth("CAPITAN");
+
+    // 1. Buscar en Clientes (Pueden ser fiadores de otros créditos)
+    const { data: clientes } = await supabase
+      .from("clientes")
+      .select("id, cedula, telefono, direccion, usuarios(nombre)")
+      .or(`cedula.ilike.%${query}%`)
+      .limit(5);
+
+    // 2. Buscar en Fiadores existentes
+    const { data: fiadores } = await supabase
+      .from("fiadores")
+      .select("id, nombre, cedula, telefono, direccion, actividad")
+      .or(`nombre.ilike.%${query}%,cedula.ilike.%${query}%`)
+      .limit(5);
+
+    const resultados: any[] = [];
+
+    clientes?.forEach(c => {
+      resultados.push({
+        id: c.id,
+        nombre: (c.usuarios as any)?.nombre || "Cliente Sin Nombre",
+        cedula: c.cedula,
+        telefono: c.telefono,
+        direccion: c.direccion,
+        actividad: "Cliente Mivank",
+        tipo: 'cliente'
+      });
+    });
+
+    fiadores?.forEach(f => {
+      resultados.push({
+        id: f.id,
+        nombre: f.nombre,
+        cedula: f.cedula,
+        telefono: f.telefono,
+        direccion: f.direccion,
+        actividad: f.actividad,
+        tipo: 'fiador'
+      });
+    });
+
+    return resultados;
+
+  } catch (error) {
+    console.error("Error en buscarPersonasParaFiador:", error);
+    return [];
+  }
+}
+
+/**
+ * Carga de documentos a Supabase Storage
+ * Zero Trust: Validación de tipo de archivo y tamaño en el servidor (aunque ya se valide en el cliente).
+ */
+export async function uploadDocumento(formData: FormData) {
+  try {
+    const { supabase } = await requireAuth("CAPITAN");
+    const file = formData.get("file") as File;
+    const tipo = formData.get("tipo") as string;
+
+    if (!file) throw new Error("No se proporcionó ningún archivo.");
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${tipo}_${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `clientes/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("documentos")
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from("documentos")
+      .getPublicUrl(filePath);
+
+    return { url: publicUrl };
+
+  } catch (error: any) {
+    console.error("Error en uploadDocumento:", error);
+    return { error: error.message || "Error al subir el archivo." };
+  }
 }

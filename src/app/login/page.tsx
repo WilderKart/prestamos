@@ -2,8 +2,15 @@
 
 import { useActionState } from "react";
 import { login } from "./actions";
-import { ChevronRight, Loader2, ShieldCheck, Zap, Lock } from "lucide-react";
+import { 
+  ShieldCheck, 
+  Envelope, 
+  Lock, 
+  ArrowRight,
+  Fingerprint
+} from "@phosphor-icons/react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 const initialState = {
   error: "",
@@ -13,92 +20,103 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(login, initialState);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Decorative Brand Elements */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-accent-yellow/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-black/5 rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-ios-bg flex flex-col items-center justify-center p-6 font-sans antialiased">
+      {/* Soft Background Accents */}
+      <div className="fixed top-[-20%] left-[-10%] w-[80%] h-[60%] bg-ios-blue/5 rounded-full blur-[150px] -z-10" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[60%] h-[50%] bg-ios-purple/5 rounded-full blur-[120px] -z-10" />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md z-10"
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-[400px]"
       >
-        {/* Logo Section */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#111111] rounded-[32px] shadow-2xl mb-6 transform -rotate-6">
-             <ShieldCheck className="w-10 h-10 text-accent-yellow" />
+        {/* Apple-style Logo Section */}
+        <div className="flex flex-col items-center mb-12">
+          <div className="w-20 h-20 bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-black/[0.02] flex items-center justify-center mb-6">
+            <ShieldCheck weight="fill" className="w-11 h-11 text-ios-blue" />
           </div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase">
-            Mivank <span className="text-accent-yellow">Ultra</span>
-          </h1>
-          <p className="text-[10px] font-black text-gray-400 tracking-[4px] uppercase mt-2">Fintech Intelligence</p>
+          <h1 className="text-3xl font-[800] text-black tracking-tight mb-1">Mivank</h1>
+          <p className="text-[13px] font-semibold text-ios-gray tracking-wide">Plataforma Financiera</p>
         </div>
 
-        {/* Login Card */}
-        <div className="card-premium bg-white p-10 border-none shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)]">
-          <form className="space-y-6" action={formAction}>
+        {/* Login Container */}
+        <div className="bg-white rounded-[32px] p-8 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-white/40">
+          <form className="space-y-5" action={formAction}>
             {state?.error && (
               <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-xs font-black uppercase"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-ios-pink/5 border border-ios-pink/10 rounded-2xl flex items-center gap-3 text-ios-pink text-[14px] font-bold"
               >
-                <Lock className="w-4 h-4" />
+                <Lock weight="fill" className="w-4 h-4" />
                 {state.error}
               </motion.div>
             )}
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Corporativo</label>
+            <div className="space-y-1">
+              <label className="ios-section-title pl-0">E-mail</label>
               <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ios-gray">
+                  <Envelope weight="fill" size={20} />
+                </div>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   required
-                  placeholder="admin@mivank.com"
-                  className="w-full rounded-2xl border-none bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none"
+                  placeholder="nombre@empresa.com"
+                  className="w-full ios-input pl-12"
                   disabled={isPending}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Contraseña</label>
+            <div className="space-y-1">
+              <label className="ios-section-title pl-0">Contraseña</label>
               <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ios-gray">
+                  <Lock weight="fill" size={20} />
+                </div>
                 <input
                   id="password"
                   name="password"
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full rounded-2xl border-none bg-gray-50 px-5 py-4 text-sm font-bold text-gray-900 focus:ring-4 focus:ring-accent-yellow/10 transition-all outline-none"
+                  className="w-full ios-input pl-12"
                   disabled={isPending}
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isPending}
-              className="w-full btn-pill bg-[#111111] text-white flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 shadow-2xl shadow-black/20 mt-4 h-14 disabled:opacity-50 transition-all"
-            >
-              <span className="font-black text-sm tracking-widest uppercase">
-                {isPending ? "Validando..." : "Acceder"}
-              </span>
-              {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-accent-yellow" />}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="w-full ios-btn-primary h-[58px] group"
+              >
+                <span className="text-[16px]">
+                  {isPending ? "Validando..." : "Iniciar Sesión"}
+                </span>
+                {!isPending && <ArrowRight weight="bold" className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+              </button>
+            </div>
           </form>
 
-          <p className="text-center mt-10 text-[10px] font-black text-gray-300 uppercase tracking-[3px]">
-            Zero Trust Finance
-          </p>
+          <div className="mt-8 flex items-center justify-center gap-2 text-ios-gray">
+            <Fingerprint weight="fill" size={20} className="opacity-40" />
+            <span className="text-[12px] font-bold uppercase tracking-widest opacity-60">Verified Secure System</span>
+          </div>
         </div>
         
-        {/* Support Section */}
-        <div className="mt-12 text-center">
-           <p className="text-xs font-bold text-gray-400">
-             ¿No tienes una cuenta? <span className="text-gray-900 cursor-pointer hover:underline">Contactar soporte</span>
+        {/* Footer / Register Link */}
+        <div className="mt-10 text-center space-y-4">
+           <Link href="/register" className="text-[14px] font-semibold text-ios-blue hover:opacity-70 transition-opacity">
+              ¿Eres nuevo? Crea una cuenta corporativa
+           </Link>
+           <p className="text-[11px] font-medium text-ios-gray/60 px-10">
+              Al entrar confirmas que posees autorización legal para gestionar datos financieros de terceros.
            </p>
         </div>
       </motion.div>

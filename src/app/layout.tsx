@@ -10,6 +10,7 @@ const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 const geistMono = Geist_Mono({
@@ -22,6 +23,8 @@ export const metadata: Metadata = {
   description: "Sistema de gestión de préstamos, clientes y finanzas. Seguro, rápido y confiable.",
 };
 
+import Providers from "@/components/Providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,9 +36,9 @@ export default function RootLayout({
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-      
-        {children}
-        <ToastProvider />
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

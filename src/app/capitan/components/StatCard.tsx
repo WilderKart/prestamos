@@ -1,66 +1,88 @@
 "use client";
 
-import { LucideIcon, TrendingUp, AlertCircle, Users, Wallet } from "lucide-react";
+import { 
+  ArrowUp, 
+  ArrowDown, 
+  TrendUp, 
+  TrendDown, 
+  WarningCircle,
+  ChartLineUp,
+  Vault,
+  Wallet,
+  Warning,
+  Money,
+  CheckCircle,
+  ChartBar
+} from "@phosphor-icons/react";
 import { motion } from "framer-motion";
-
-const IconMap: Record<string, LucideIcon> = {
-  TrendingUp,
-  AlertCircle,
-  Users,
-  Wallet
-};
 
 interface StatCardProps {
   label: string;
-  value: string | number;
-  icon: string; // Changed to string for serialization
-  variant?: "white" | "black";
+  value: string;
+  icon: 'Wallet' | 'AlertCircle' | 'TrendingUp' | 'ChartBar' | string;
   trend?: string;
-  trendType?: "up" | "down";
+  trendType?: 'up' | 'down' | 'neutral';
+  color?: 'blue' | 'red' | 'green' | 'purple' | 'black';
+  onClick?: () => void;
 }
 
-export default function StatCard({ 
-  label, 
-  value, 
-  icon, 
-  variant = 'white',
-  trend,
-  trendType = 'up'
-}: StatCardProps) {
-  const isBlack = variant === 'black';
-  const Icon = IconMap[icon] || TrendingUp; // Fallback
+export default function StatCard({ label, value, icon, trend, trendType = "neutral", color = 'black', onClick }: StatCardProps) {
+  const isUp = trendType === 'up';
 
+  const colorConfig = {
+    blue: "text-ios-blue bg-ios-blue/10",
+    red: "text-ios-pink bg-ios-pink/10",
+    green: "text-ios-green bg-ios-green/10",
+    purple: "text-ios-purple bg-ios-purple/10",
+    black: "text-black bg-black/5"
+  };
+
+  const IconMap: Record<string, any> = {
+    'Wallet': Wallet,
+    'AlertCircle': Warning,
+    'TrendingUp': TrendUp,
+    'ChartBar': ChartBar,
+    'Money': Money
+  };
+
+  const IconComponent = IconMap[icon] || Vault;
+  
   return (
     <motion.div 
-      whileHover={{ y: -8 }}
-      className={`card-premium p-6 flex flex-col gap-4 min-h-[160px] ${
-        isBlack ? 'bg-header text-white' : 'bg-white text-gray-900 border-none'
-      }`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      onClick={onClick}
+      className={`ios-card bg-white p-4 relative overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer hover:shadow-xl active:scale-95' : ''}`}
     >
-      <div className="flex items-center justify-between">
-        <div className={`p-3 rounded-2xl ${
-          isBlack ? 'bg-zinc-800 text-accent-yellow' : 'bg-gray-50 text-header'
-        }`}>
-          <Icon className="w-6 h-6" />
+      <div className="relative z-10 space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 rounded-xl transition-all duration-300 ${colorConfig[color]} group-hover:scale-110`}>
+             <IconComponent size={18} weight="fill" />
+          </div>
+          <p className="text-[9px] font-black text-black/30 uppercase tracking-[0.2em]">{label}</p>
         </div>
         
-        {trend && (
-           <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-             isBlack ? 'bg-zinc-800 text-accent-green' : 'bg-green-50 text-green-600'
-           }`}>
-             {trendType === 'up' ? '★' : '▾'} {trend}
-           </span>
-        )}
+        <div className="flex flex-col">
+          <h3 className="text-xl md:text-2xl font-[1000] text-black tracking-tighter leading-none">{value}</h3>
+          {trend && (
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className={`text-[9px] font-black uppercase tracking-tighter ${isUp ? 'text-ios-green' : 'text-ios-pink'}`}>
+                {trend}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Indicador táctico si es clicable */}
+      {onClick && (
+        <div className="absolute top-4 right-4 text-black/5 group-hover:text-black/20 transition-colors">
+          <ArrowUp size={12} className="rotate-45" weight="bold" />
+        </div>
+      )}
 
-      <div>
-        <p className={`text-sm font-medium ${isBlack ? 'text-zinc-400' : 'text-zinc-500'}`}>
-          {label}
-        </p>
-        <p className="text-2xl font-black mt-1 tracking-tight">
-          {value}
-        </p>
-      </div>
+      {/* Background Glow */}
+      <div className={`absolute -bottom-4 -right-4 w-12 h-12 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity ${colorConfig[color]}`} />
     </motion.div>
   );
 }

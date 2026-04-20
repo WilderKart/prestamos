@@ -1,8 +1,23 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, useEffect } from "react";
+import { usePersistentForm } from "@/hooks/usePersistentForm";
 import { registrarDesembolso } from "./desembolsoActions";
-import { Banknote, Upload, X, Check, Loader2, Receipt } from "lucide-react";
+import { 
+  Money, 
+  UploadSimple, 
+  X, 
+  CheckCircle, 
+  CircleNotch, 
+  Receipt,
+  Coin,
+  DeviceMobile,
+  Bank,
+  User
+} from "@phosphor-icons/react";
+import { motion, AnimatePresence } from "framer-motion";
+import { formatCurrency } from "@/utils/format";
+import IosModal from "@/components/ui/IosModal";
 
 interface DesembolsoFormModalProps {
   prestamoId: string;
@@ -21,6 +36,15 @@ export default function DesembolsoFormModal({
   const [comprobanteFile, setComprobanteFile] = useState<File | null>(null);
   const [state, formAction, pending] = useActionState(registrarDesembolso, null);
 
+  const { data: draft, setFieldValue, clearDraft } = usePersistentForm(`desembolso-${prestamoId}`, {
+    monto: montoPrestamo.toString(),
+    metodo: "efectivo",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFieldValue(e.target.name as any, e.target.value);
+  };
+
   const handleSubmit = async (formData: FormData) => {
     if (comprobanteFile) {
       formData.set("comprobante", comprobanteFile);
@@ -28,144 +52,153 @@ export default function DesembolsoFormModal({
     formAction(formData);
   };
 
-  if (state?.success) {
-    setTimeout(() => {
-      setOpen(false);
-      onSuccess?.();
-    }, 1500);
-  }
+  useEffect(() => {
+    if (state?.success) {
+      const timer = setTimeout(() => {
+        setOpen(false);
+        clearDraft();
+        onSuccess?.();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [state?.success, clearDraft, onSuccess]);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-accent-yellow/10 text-accent-yellow rounded-xl hover:bg-accent-yellow/20 transition-all font-bold text-sm"
+        className="flex items-center gap-2 px-6 py-3 bg-ios-green/10 text-ios-green rounded-2xl hover:bg-ios-green/20 active:scale-95 transition-all font-[800] text-[13px] uppercase tracking-wider border border-ios-green/20 shadow-sm"
       >
-        <Banknote className="w-4 h-4" />
-        Registrar Desembolso
+        <Money weight="fill" size={18} />
+        REGISTRAR DESEMBOLSO
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-accent-yellow rounded-xl flex items-center justify-center">
-                  <Banknote className="w-5 h-5 text-black" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Registrar Desembolso</h3>
-                  <p className="text-xs text-gray-500">{clienteNombre}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <IosModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title="Confirmar Entrega"
+        subtitle={clienteNombre}
+        icon={<Money weight="fill" size={22} />}
+      >
+        {state?.success ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-12"
+          >
+            <div className="w-20 h-20 bg-ios-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle weight="fill" className="w-12 h-12 text-ios-green" />
             </div>
+            <h4 className="text-[20px] font-[900] text-black tracking-tight">¡Éxito total!</h4>
+            <p className="text-[14px] font-semibold text-ios-gray mt-2">El desembolso ha sido procesado y vinculado.</p>
+          </motion.div>
+        ) : (
+          <form action={handleSubmit} className="space-y-6 pb-20">
+            <input type="hidden" name="prestamoId" value={prestamoId} />
 
-            {state?.success ? (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="w-8 h-8 text-green-600" />
+            <div className="ios-card bg-white p-6 space-y-4 shadow-sm">
+              <div>
+                <label className="ios-section-title pl-0 mb-2">Capital a entregar</label>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ios-green font-black text-xl">$</div>
+                  <input
+                    type="number"
+                    name="monto"
+                    value={draft.monto}
+                    onChange={handleChange}
+                    step="0.01"
+                    min="0"
+                    required
+                    className="w-full ios-input pl-10 text-[24px] font-[900] text-black tracking-tighter"
+                    disabled={pending}
+                  />
                 </div>
-                <h4 className="text-lg font-bold text-gray-900">Desembolso Registrado</h4>
-                <p className="text-sm text-gray-500 mt-1">El desembolso ha sido registrado exitosamente.</p>
               </div>
-            ) : (
-              <form action={handleSubmit} className="space-y-4">
-                <input type="hidden" name="prestamoId" value={prestamoId} />
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Monto desembolsado</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">$</span>
-                    <input
-                      type="number"
-                      name="monto"
-                      defaultValue={montoPrestamo}
-                      step="0.01"
-                      min="0"
-                      required
-                      className="w-full pl-8 pr-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 font-semibold focus:ring-2 focus:ring-accent-yellow/50 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Método de entrega</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: "efectivo", label: "Efectivo", icon: "💵" },
-                      { value: "nequi", label: "Nequi", icon: "📱" },
-                      { value: "daviplata", label: "Daviplata", icon: "📲" },
-                      { value: "transferencia", label: "Transferencia", icon: "🏦" },
-                    ].map((m) => (
+              <div>
+                <label className="ios-section-title pl-0 mb-3">Método de Transferencia</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: "efectivo", label: "Efectivo", icon: Coin, color: "text-ios-yellow" },
+                    { value: "nequi", label: "Nequi", icon: DeviceMobile, color: "text-ios-pink" },
+                    { value: "daviplata", label: "Daviplata", icon: DeviceMobile, color: "text-ios-pink" },
+                    { value: "transferencia", label: "Banco", icon: Bank, color: "text-ios-blue" },
+                  ].map((m) => {
+                    const MIcon = m.icon;
+                    const isSelected = draft.metodo === m.value;
+                    return (
                       <label
                         key={m.value}
-                        className="flex items-center gap-2 p-3 rounded-xl border border-gray-200 cursor-pointer hover:border-accent-yellow hover:bg-accent-yellow/5 transition-all has-[:checked]:border-accent-yellow has-[:checked]:bg-accent-yellow/10"
+                        className={`flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer ${
+                          isSelected 
+                          ? 'bg-white border-ios-blue shadow-[0_4px_12px_rgba(0,122,255,0.1)]' 
+                          : 'bg-ios-bg border-transparent opacity-60'
+                        }`}
                       >
                         <input
                           type="radio"
                           name="metodo"
                           value={m.value}
-                          required
                           className="sr-only"
-                          defaultChecked={m.value === "efectivo"}
+                          checked={isSelected}
+                          onChange={handleChange}
                         />
-                        <span className="text-lg">{m.icon}</span>
-                        <span className="text-sm font-medium text-gray-700">{m.label}</span>
+                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-ios-blue/10' : 'bg-white'}`}>
+                          <MIcon weight="fill" size={20} className={m.color} />
+                        </div>
+                        <span className="text-[13px] font-black text-black tracking-tight">{m.label}</span>
                       </label>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Comprobante (opcional)</label>
-                  <label className="flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-accent-yellow hover:bg-accent-yellow/5 transition-all">
-                    <Upload className="w-6 h-6 text-gray-400 mb-1" />
-                    <span className="text-xs text-gray-500">
-                      {comprobanteFile ? comprobanteFile.name : "Subir archivo"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setComprobanteFile(e.target.files?.[0] || null)}
-                      className="hidden"
-                    />
-                  </label>
+            <div className="ios-card bg-white p-6 shadow-sm">
+              <label className="ios-section-title pl-0 mb-2">Comprobante de Captura</label>
+              <label className="flex flex-col items-center justify-center w-full h-[120px] rounded-2xl border-2 border-dashed border-black/5 bg-ios-bg/30 cursor-pointer hover:bg-ios-bg/50 transition-all group">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-transform group-hover:scale-110 ${comprobanteFile ? 'bg-ios-green/10' : 'bg-white shadow-sm'}`}>
+                  {comprobanteFile ? <CheckCircle weight="fill" size={24} className="text-ios-green" /> : <UploadSimple weight="bold" size={24} className="text-ios-blue" />}
                 </div>
-
-                {state?.error && (
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600">
-                    {state.error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
+                <span className="text-[11px] font-[800] text-ios-gray uppercase tracking-widest text-center px-4">
+                  {comprobanteFile ? comprobanteFile.name : "Subir Foto o PDF"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={(e) => setComprobanteFile(e.target.files?.[0] || null)}
+                  className="hidden"
                   disabled={pending}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-accent-yellow text-black rounded-xl hover:opacity-90 transition-all disabled:opacity-50 font-bold text-sm"
-                >
-                  {pending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Registrando...
-                    </>
-                  ) : (
-                    <>
-                      <Receipt className="w-4 h-4" />
-                      Registrar Desembolso
-                    </>
-                  )}
-                </button>
-              </form>
+                />
+              </label>
+            </div>
+
+            {state?.error && (
+              <div className="bg-ios-pink/5 border border-ios-pink/10 rounded-2xl p-4 text-[12px] font-black text-ios-pink uppercase tracking-wider">
+                {state.error}
+              </div>
             )}
-          </div>
-        </div>
-      )}
+
+            <button
+              type="submit"
+              disabled={pending}
+              className="w-full ios-btn-primary h-[64px] flex items-center justify-center gap-3 shadow-2xl shadow-ios-blue/10"
+            >
+              {pending ? (
+                <>
+                  <CircleNotch weight="bold" className="w-5 h-5 animate-spin" />
+                  PROCESANDO...
+                </>
+              ) : (
+                <>
+                  <Receipt weight="fill" size={22} />
+                  REGISTRAR DESEMBOLSO
+                </>
+              )}
+            </button>
+          </form>
+        )}
+      </IosModal>
     </>
   );
 }

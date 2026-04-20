@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { motion } from "framer-motion";
 
 export default function ClientSidebar({ navLinks, initialCount }: { navLinks: any[], initialCount: number }) {
   const pathname = usePathname();
@@ -11,9 +12,6 @@ export default function ClientSidebar({ navLinks, initialCount }: { navLinks: an
   const supabase = createClient();
 
   useEffect(() => {
-    // Escuchamos inserciones (aumenta count) o updates (si se marcaron como leidas, recalcular/restar)
-    // En realidad lo mas facil es escuchar INSERT: +1 y escuchar UPDATE: si change.leida === true, count-- o lo re-calculamos.
-    // Para simplificar: solo +1 en INSERT. El click para marcar leído se puede refetch o optimistic
     const channel = supabase.channel('notifs_badge')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones' }, () => {
         setUnreadCount(prev => prev + 1);
@@ -30,16 +28,14 @@ export default function ClientSidebar({ navLinks, initialCount }: { navLinks: an
     };
   }, [supabase]);
 
-  // Si abrimos la pagina de notificaciones, idealmente un hook para vaciar, 
-  // pero el update arriba captura los optimistic db updates.
   return (
-    <nav className="flex-1 px-4 space-y-1">
+    <nav className="space-y-2">
       {navLinks.map((link) => {
         const Icon = link.icon;
         const isActive = pathname === link.href;
         
         let displayBadge = 0;
-        if (link.label === "Notificaciones") {
+        if (link.label === "Alertas") {
            displayBadge = unreadCount;
         }
 
@@ -47,18 +43,33 @@ export default function ClientSidebar({ navLinks, initialCount }: { navLinks: an
           <Link
             key={link.href}
             href={link.href}
-            className={`flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all group ${
-              isActive ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+            className={`flex items-center justify-between px-5 py-4 text-[13px] font-black uppercase tracking-widest rounded-2xl transition-all group relative ${
+              isActive 
+              ? "text-ios-blue bg-ios-blue/5" 
+              : "text-black/30 hover:text-black hover:bg-black/[0.02]"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <Icon className={`w-5 h-5 transition-colors ${isActive ? "text-blue-600" : "text-gray-400 group-hover:text-blue-600"}`} />
-              {link.label}
+            <div className="flex items-center gap-4 relative z-10">
+              <Icon 
+                weight={isActive ? "fill" : "bold"} 
+                size={22} 
+                className={`transition-colors ${isActive ? "text-ios-blue" : "text-black/10 group-hover:text-black/30"}`} 
+              />
+              <span className={isActive ? "tracking-tighter" : ""}>{link.label}</span>
             </div>
+            
             {displayBadge > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {displayBadge}
+              <span className="bg-ios-pink text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-ios-pink/20 relative z-10 uppercase tracking-tighter">
+                {displayBadge} NEW
               </span>
+            )}
+
+            {isActive && (
+              <motion.div 
+                layoutId="sidebar-pill"
+                className="absolute inset-0 bg-ios-blue/[0.03] border-r-[3px] border-ios-blue rounded-2xl"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
             )}
           </Link>
         );

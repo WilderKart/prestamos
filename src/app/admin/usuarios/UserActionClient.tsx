@@ -3,7 +3,20 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { bloquearUsuario, desbloquearUsuario, cambiarRolUsuario } from "./actions";
-import { Ban, CheckCircle, ShieldAlert, MoreVertical, Loader2 } from "lucide-react";
+import { 
+  DotsThreeOutlineVertical, 
+  CircleNotch, 
+  HandBlock, 
+  ShieldCheck, 
+  UserGear,
+  PencilSimple,
+  CaretRight,
+  UserCircle,
+  ShieldWarning,
+  CheckCircle,
+  X
+} from "@phosphor-icons/react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Rol = 'CLIENTE' | 'CAPITAN' | 'ADMIN';
 
@@ -12,17 +25,17 @@ export default function UserActionClient({ usuario }: { usuario: any }) {
   const [showMenu, setShowMenu] = useState(false);
 
   const handleBloquear = async () => {
-    const motivo = prompt("Ingrese el motivo de bloqueo:");
+    const motivo = prompt("Indique el motivo de la suspensión de seguridad:");
     if (!motivo) return;
 
     setLoadingAction("bloquear");
-    toast.loading("Procesando...", { id: "bloquear" });
+    const toastId = toast.loading("Aplicando protocolo de bloqueo...");
 
     try {
       await bloquearUsuario(usuario.id, motivo);
-      toast.success("Usuario bloqueado exitosamente", { id: "bloquear" });
+      toast.success("Identidad suspendida correctamente", { id: toastId });
     } catch (e: any) {
-      toast.error(e.message || "Error al ejecutar operación", { id: "bloquear" });
+      toast.error(e.message || "Fallo en la operación de red", { id: toastId });
     } finally {
       setLoadingAction(null);
       setShowMenu(false);
@@ -30,16 +43,16 @@ export default function UserActionClient({ usuario }: { usuario: any }) {
   };
 
   const handleDesbloquear = async () => {
-    if (!confirm("¿Seguro que deseas desbloquear a este usuario?")) return;
+    if (!confirm("¿Autorizar el rstablecimiento de acceso para este usuario?")) return;
 
     setLoadingAction("desbloquear");
-    toast.loading("Procesando...", { id: "desbloquear" });
+    const toastId = toast.loading("Restableciendo credenciales...");
 
     try {
       await desbloquearUsuario(usuario.id);
-      toast.success("Usuario desbloqueado", { id: "desbloquear" });
+      toast.success("Acceso restaurado con éxito", { id: toastId });
     } catch (e: any) {
-      toast.error(e.message || "Error al ejecutar operación", { id: "desbloquear" });
+      toast.error(e.message || "Fallo en la sincronización", { id: toastId });
     } finally {
       setLoadingAction(null);
       setShowMenu(false);
@@ -48,20 +61,19 @@ export default function UserActionClient({ usuario }: { usuario: any }) {
 
   const handleCambiarRol = async (nuevoRol: Rol) => {
     if (usuario.rol === nuevoRol) return;
-    if (!confirm(`¿Atención: Estás a punto de convertir a este usuario en ${nuevoRol}? Esto cambiará drásticamente sus permisos.`)) return;
+    if (!confirm(`MODIFICACIÓN DE NIVEL DE ACCESO: ¿Establecer rol ${nuevoRol} para este usuario?`)) return;
 
     setLoadingAction(`rol-${nuevoRol}`);
-    toast.loading("Cargando información...", { id: "rol" });
+    const toastId = toast.loading("Actualizando matriz de permisos...");
 
     try {
       await cambiarRolUsuario(usuario.id, nuevoRol);
-      toast.success(`Rol cambiado a ${nuevoRol}`, { id: "rol" });
+      toast.success(`Nivel de acceso actualizado a ${nuevoRol}`, { id: toastId });
     } catch (e: any) {
-      // Devolver error según reglas obligatorias: "No tienes permisos para acceder a esta sección", "Acción no permitida", etc.
       if (e.message.includes("permission denied")) {
-        toast.error("Acción no permitida", { id: "rol" });
+        toast.error("Acción no autorizada por protocolo", { id: toastId });
       } else {
-        toast.error(e.message || "Error al ejecutar operación", { id: "rol" });
+        toast.error(e.message || "Fallo en la base de datos", { id: toastId });
       }
     } finally {
       setLoadingAction(null);
@@ -74,57 +86,78 @@ export default function UserActionClient({ usuario }: { usuario: any }) {
       <button 
         onClick={() => setShowMenu(!showMenu)}
         disabled={!!loadingAction}
-        className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50"
+        className="w-10 h-10 bg-black/[0.03] rounded-xl hover:bg-black hover:text-white transition-all flex items-center justify-center text-black/20 disabled:opacity-50 active:scale-95"
       >
-        {loadingAction ? <Loader2 className="w-5 h-5 animate-spin text-indigo-600" /> : <MoreVertical className="w-5 h-5 text-gray-500" />}
+        {loadingAction ? (
+          <CircleNotch className="w-5 h-5 animate-spin" weight="bold" />
+        ) : (
+          <DotsThreeOutlineVertical className="w-5 h-5" weight="fill" />
+        )}
       </button>
 
-      {showMenu && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)}></div>
-          <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
-            <div className="py-1" role="menu">
-              
-              <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</p>
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100]" 
+              onClick={() => setShowMenu(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className="absolute right-0 mt-3 w-64 rounded-[28px] bg-white shadow-2xl z-[110] overflow-hidden border border-black/[0.03] p-2"
+            >
+              <div className="flex flex-col gap-1">
+                <div className="px-4 py-3 text-[10px] font-black text-black/20 uppercase tracking-[0.2em]">Protocolo de Acción</div>
+                
+                {usuario.estado !== 'BLOQUEADO' ? (
+                  <button
+                    onClick={handleBloquear}
+                    disabled={!!loadingAction}
+                    className="w-full text-left px-4 py-3 text-[14px] font-bold text-ios-pink hover:bg-ios-pink/5 rounded-2xl flex items-center gap-3 transition-colors"
+                  >
+                    <HandBlock weight="fill" size={18} /> Bloquear Acceso
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleDesbloquear}
+                    disabled={!!loadingAction}
+                    className="w-full text-left px-4 py-3 text-[14px] font-bold text-ios-green hover:bg-ios-green/5 rounded-2xl flex items-center gap-3 transition-colors"
+                  >
+                    <CheckCircle weight="fill" size={18} /> Restaurar Acceso
+                  </button>
+                )}
+
+                <div className="h-[1px] bg-black/[0.03] my-2 mx-4" />
+                <div className="px-4 py-3 text-[10px] font-black text-black/20 uppercase tracking-[0.2em]">Matriz de Permisos</div>
+
+                {(['CLIENTE', 'CAPITAN', 'ADMIN'] as Rol[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => handleCambiarRol(r)}
+                    disabled={!!loadingAction || usuario.rol === r}
+                    className={`w-full text-left px-4 py-3 text-[14px] font-bold rounded-2xl flex items-center justify-between transition-all ${
+                      usuario.rol === r 
+                      ? 'text-black/10 bg-black/[0.01] cursor-default' 
+                      : 'text-black/60 hover:bg-ios-blue/5 hover:text-ios-blue'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                       <ShieldCheck weight={usuario.rol === r ? "fill" : "bold"} size={18} />
+                       <span>{r}</span>
+                    </div>
+                    {usuario.rol === r && <CaretRight weight="bold" size={12} />}
+                  </button>
+                ))}
               </div>
-
-              {usuario.estado !== 'BLOQUEADO' ? (
-                <button
-                  onClick={handleBloquear}
-                  disabled={!!loadingAction}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                >
-                  <Ban className="w-4 h-4" /> Bloquear Usuario
-                </button>
-              ) : (
-                <button
-                  onClick={handleDesbloquear}
-                  disabled={!!loadingAction}
-                  className="w-full text-left px-4 py-2 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" /> Desbloquear Usuario
-                </button>
-              )}
-
-              <div className="px-4 py-2 border-y border-gray-100 bg-gray-50 mt-1">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Cambiar Rol</p>
-              </div>
-
-              {(['CLIENTE', 'CAPITAN', 'ADMIN'] as Rol[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => handleCambiarRol(r)}
-                  disabled={!!loadingAction || usuario.rol === r}
-                  className={`w-full text-left px-4 py-2 text-sm ${usuario.rol === r ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'} flex items-center gap-2`}
-                >
-                  <ShieldAlert className={`w-4 h-4 ${usuario.rol === r ? 'opacity-50' : ''}`} /> Hacer {r}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
